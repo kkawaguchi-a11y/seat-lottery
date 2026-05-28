@@ -23,7 +23,7 @@
   h1::before, h1::after { content:'―'; color:var(--gold2); font-size:0.5em; vertical-align:middle; margin:0 10px; }
   .subtitle { font-size:11px; color:var(--muted); margin-top:8px; letter-spacing:2px; }
   .day-badge { display:inline-block; margin-top:10px; font-family:'Space Mono',monospace; font-size:10px; letter-spacing:3px; padding:4px 12px; border-radius:20px; border:1px solid var(--border); color:var(--muted); }
-  .day-badge.thursday { border-color:var(--gold2); color:var(--gold); background:rgba(232,200,122,0.08); }
+  .day-badge.friday { border-color:var(--gold2); color:var(--gold); background:rgba(232,200,122,0.08); }
   .sync-bar { display:flex; align-items:center; gap:8px; font-family:'Space Mono',monospace; font-size:10px; letter-spacing:2px; color:var(--muted); margin-top:8px; }
   .sync-dot { width:7px; height:7px; border-radius:50%; background:var(--muted); transition:background 0.4s; }
   .sync-dot.online { background:#6aaa6a; box-shadow:0 0 6px #6aaa6a; }
@@ -65,6 +65,9 @@
   .btn-primary { background:var(--gold); color:#0d0d0f; font-weight:700; }
   .btn-primary:hover:not(:disabled) { background:#f0d88a; transform:translateY(-1px); box-shadow:0 4px 20px rgba(232,200,122,0.4); }
   .btn-primary:disabled { opacity:0.35; cursor:not-allowed; transform:none; box-shadow:none; }
+  .btn-warning { background:transparent; color:var(--gold2); border:1px solid rgba(201,153,58,0.45); }
+  .btn-warning:hover:not(:disabled) { background:rgba(201,153,58,0.1); border-color:var(--gold2); }
+  .btn-warning:disabled { opacity:0.3; cursor:not-allowed; }
   .btn-danger { background:transparent; color:var(--red); border:1px solid rgba(201,64,64,0.35); }
   .btn-danger:hover { background:rgba(201,64,64,0.1); border-color:var(--red); }
   .btn-row { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
@@ -130,7 +133,8 @@
       <div class="prog-wrap"><div class="prog-bar" id="progBar" style="width:0%"></div></div>
       <div class="btn-row">
         <button class="btn btn-primary" id="drawBtn" onclick="draw()" disabled>🎋 くじを引く</button>
-        <button class="btn btn-danger" onclick="confirmReset()">↺ リセット</button>
+        <button class="btn btn-warning" id="undoBtn" onclick="confirmUndo()" disabled>↩ 1つ戻す</button>
+        <button class="btn btn-danger" onclick="confirmReset()">↺ 全リセット</button>
       </div>
       <div class="status-bar" id="statusBar">0 / 16 完了</div>
     </div>
@@ -175,50 +179,50 @@ const MATSUMOTO='松本';
 const MATSUMOTO_SEAT='松本さん席';
 const ALL_SEATS=[1,2,3,4,5,6,7,8,9,10,11,12,13,14];
 const DOW=new Date().getDay();
-const IS_THURSDAY=DOW===4;
+const IS_FRIDAY=DOW===5;
 let localState={currentMember:null,animating:false};
-let shared={assignments:{},matsumotoUnlocked:false,drawingBy:null,lastResetDate:''};
+let shared={assignments:{},matsumotoUnlocked:false,drawingBy:null,lastResetDate:'',history:[]};
 STATE.on('value',snap=>{
   const data=snap.val()||{};
   shared.assignments=data.assignments||{};
   shared.matsumotoUnlocked=data.matsumotoUnlocked||false;
   shared.drawingBy=data.drawingBy||null;
   shared.lastResetDate=data.lastResetDate||'';
+  shared.history=data.history||[];
   const lockEl=document.getElementById('drawingLock');
   if(shared.drawingBy&&shared.drawingBy!==localState.currentMember){
     lockEl.classList.add('show');
     lockEl.querySelector('.drawing-lock-msg').innerHTML=`🎋 ${shared.drawingBy} さんが抽選中...<br><span style="font-size:10px;color:var(--muted);margin-top:8px;display:block">しばらくお待ちください</span>`;
   } else { lockEl.classList.remove('show'); }
-  renderGrid();updateWho();updateDrawBtn();rebuildResultsTable();updateProgress();updateNotice();
+  renderGrid();updateWho();updateDrawBtn();updateUndoBtn();rebuildResultsTable();updateProgress();updateNotice();
 });
 db.ref('.info/connected').on('value',snap=>{
   const online=snap.val();
-  const dot=document.getElementById('syncDot');
-  const lbl=document.getElementById('syncLabel');
-  dot.className='sync-dot '+(online?'online':'offline');
-  lbl.textContent=online?'リアルタイム同期中':'オフライン';
+  document.getElementById('syncDot').className='sync-dot '+(online?'online':'offline');
+  document.getElementById('syncLabel').textContent=online?'リアルタイム同期中':'オフライン';
 });
 function assignedNumericSeats(){return new Set(Object.values(shared.assignments).filter(s=>typeof s==='number'));}
 function availableSeats(){const used=assignedNumericSeats();return ALL_SEATS.filter(s=>!used.has(s));}
-function isFixed(m){return!IS_THURSDAY&&!shared.matsumotoUnlocked&&m===MATSUMOTO;}
+function isFixed(m){return!IS_FRIDAY&&!shared.matsumotoUnlocked&&m===MATSUMOTO;}
 function isDone(m){return!isFixed(m)&&(m in shared.assignments);}
 function fbSet(path,val){return db.ref('state/'+path).set(val);}
 function fbRemove(path){return db.ref('state/'+path).remove();}
 function selectMember(m){
-  if(isFixed(m)||isDone(m)||localState.animating)return;
-  if(shared.drawingBy)return;
+  if(isFixed(m)||isDone(m)||localState.animating||shared.drawingBy)return;
   localState.currentMember=localState.currentMember===m?null:m;
   updateDrawBtn();renderGrid();updateWho();
 }
 function updateWho(){
   const el=document.getElementById('whoDraws');
-  if(!localState.currentMember){el.innerHTML='名前を選択してください';}
-  else{el.innerHTML=`<strong>${localState.currentMember}</strong> さんのくじ`;}
+  el.innerHTML=localState.currentMember?`<strong>${localState.currentMember}</strong> さんのくじ`:'名前を選択してください';
 }
 function updateDrawBtn(){
-  const btn=document.getElementById('drawBtn');
   const canDraw=localState.currentMember&&!isDone(localState.currentMember)&&availableSeats().length>0&&!localState.animating&&!shared.drawingBy;
-  btn.disabled=!canDraw;
+  document.getElementById('drawBtn').disabled=!canDraw;
+}
+function updateUndoBtn(){
+  const undoableHistory=(shared.history||[]).filter(h=>h.member!==MATSUMOTO||IS_FRIDAY||shared.matsumotoUnlocked);
+  document.getElementById('undoBtn').disabled=undoableHistory.length===0||!!shared.drawingBy||localState.animating;
 }
 async function draw(){
   const member=localState.currentMember;
@@ -244,18 +248,16 @@ async function draw(){
   }
   valS.textContent=typeof finalSeat==='number'?finalSeat:'松本席';
   slotM.classList.remove('active');slotS.classList.remove('active');
-  await fbSet(`assignments/${member}`,finalSeat);
-  await fbRemove('drawingBy');
+  const newHistory=[...(shared.history||[]),{member,seat:finalSeat}];
+  await db.ref('state').update({[`assignments/${member}`]:finalSeat,drawingBy:null,history:newHistory});
   localState.animating=false;localState.currentMember=null;
   renderGrid();updateWho();updateDrawBtn();
   showResultOverlay(member,finalSeat);
-  const lottery=IS_THURSDAY||shared.matsumotoUnlocked?[...REGULAR_MEMBERS,MATSUMOTO]:REGULAR_MEMBERS;
-  const allDone=lottery.every(m=>m in shared.assignments);
-  if(allDone)setTimeout(launchConfetti,600);
+  const lottery=IS_FRIDAY||shared.matsumotoUnlocked?[...REGULAR_MEMBERS,MATSUMOTO]:REGULAR_MEMBERS;
+  if(lottery.every(m=>m in shared.assignments))setTimeout(launchConfetti,600);
 }
 async function unlockMatsumoto(){
-  await fbSet('matsumotoUnlocked',true);
-  await fbRemove(`assignments/${MATSUMOTO}`);
+  await db.ref('state').update({matsumotoUnlocked:true,[`assignments/${MATSUMOTO}`]:null});
 }
 function confirmReset(){
   if(!confirm('全ての結果をリセットしますか？\n全員の画面がリセットされます。'))return;
@@ -263,8 +265,8 @@ function confirmReset(){
 }
 async function doReset(){
   const dow=new Date().getDay();
-  const newState={assignments:{},matsumotoUnlocked:false,drawingBy:null,lastResetDate:toDateStr(new Date())};
-  if(dow!==4)newState.assignments[MATSUMOTO]=MATSUMOTO_SEAT;
+  const newState={assignments:{},matsumotoUnlocked:false,drawingBy:null,lastResetDate:toDateStr(new Date()),history:[]};
+  if(dow!==5)newState.assignments[MATSUMOTO]=MATSUMOTO_SEAT;
   await STATE.set(newState);
   localState.currentMember=null;localState.animating=false;
   document.getElementById('slotMemberVal').textContent='—';
@@ -273,7 +275,21 @@ async function doReset(){
   const days=['日','月','火','水','木','金','土'];
   const badge=document.getElementById('dayBadge');
   badge.textContent=`本日 ${days[dow]}曜日`;
-  badge.classList.toggle('thursday',dow===4);
+  badge.classList.toggle('friday',dow===5);
+}
+function confirmUndo(){
+  if(!confirm('直前の抽選結果を1つ取り消しますか？'))return;
+  doUndo();
+}
+async function doUndo(){
+  const history=shared.history||[];
+  if(!history.length)return;
+  const last=history[history.length-1];
+  const newHistory=history.slice(0,-1);
+  await db.ref('state').update({[`assignments/${last.member}`]:null,history:newHistory});
+  document.getElementById('slotMemberVal').textContent='—';
+  document.getElementById('slotSeatVal').textContent='—';
+  document.getElementById('slotArrow').style.display='none';
 }
 function showResultOverlay(member,seat){
   document.getElementById('rcMember').textContent=`${member} さん`;
@@ -299,9 +315,9 @@ function rebuildResultsTable(){
   document.getElementById('resultsPanel').style.display='';
 }
 function updateProgress(){
-  const lottery=(!IS_THURSDAY&&!shared.matsumotoUnlocked)?REGULAR_MEMBERS:[...REGULAR_MEMBERS,MATSUMOTO];
+  const lottery=(!IS_FRIDAY&&!shared.matsumotoUnlocked)?REGULAR_MEMBERS:[...REGULAR_MEMBERS,MATSUMOTO];
   const total=lottery.length;
-  const done=lottery.filter(m=>{if(!IS_THURSDAY&&!shared.matsumotoUnlocked&&m===MATSUMOTO)return false;return m in shared.assignments;}).length;
+  const done=lottery.filter(m=>{if(!IS_FRIDAY&&!shared.matsumotoUnlocked&&m===MATSUMOTO)return false;return m in shared.assignments;}).length;
   document.getElementById('progBar').style.width=(done/total*100)+'%';
   document.getElementById('statusBar').textContent=`${done} / ${total} 完了`;
 }
@@ -320,7 +336,7 @@ function renderGrid(){
 }
 function updateNotice(){
   const notice=document.getElementById('matsumotoNotice');
-  if(IS_THURSDAY){notice.className='notice thu';notice.innerHTML='🗓️ 本日は木曜日です。松本さんも通常メンバーとしてくじに参加します。';}
+  if(IS_FRIDAY){notice.className='notice thu';notice.innerHTML='🗓️ 本日は金曜日です。松本さんも通常メンバーとしてくじに参加します。';}
   else if(shared.matsumotoUnlocked){notice.className='notice thu';notice.innerHTML='🔓 松本さんの固定を解除しました。通常メンバーとしてくじに参加します。';}
   else{notice.className='notice';notice.innerHTML='📌 松本さんは「松本さん席」固定です。チップの「固定解除」ボタンでくじに参加できます。';}
 }
@@ -339,7 +355,7 @@ function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
   const days=['日','月','火','水','木','金','土'];
   const badge=document.getElementById('dayBadge');
   badge.textContent=`本日 ${days[DOW]}曜日`;
-  if(IS_THURSDAY)badge.classList.add('thursday');
+  if(IS_FRIDAY)badge.classList.add('friday');
   updateNotice();
   const snap=await STATE.once('value');
   if(!snap.val())await doReset();

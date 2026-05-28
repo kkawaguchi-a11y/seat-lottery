@@ -81,8 +81,6 @@
   .col-seat{font-family:'Space Mono',monospace;color:var(--gold);font-weight:700;width:130px;}
   .col-member{font-weight:700;}
   .col-tag{font-size:11px;color:var(--fixed-text);font-family:'Space Mono',monospace;}
-  @keyframes row-in{from{opacity:0;transform:translateX(-8px);}to{opacity:1;transform:translateX(0);}}
-  .row-new{animation:row-in 0.35s ease-out;}
   .result-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.75);display:flex;align-items:center;justify-content:center;z-index:998;opacity:0;pointer-events:none;transition:opacity 0.3s;}
   .result-overlay.show{opacity:1;pointer-events:all;}
   .result-card{background:var(--panel);border:1px solid var(--gold);border-radius:2px;padding:36px 52px;text-align:center;box-shadow:0 0 60px rgba(232,200,122,0.2);transform:scale(0.9);transition:transform 0.3s;max-width:90vw;}
@@ -226,7 +224,7 @@ function updateDrawBtn(){
 }
 function updateUndoBtn(){
   const h=shared.history||[];
-  document.getElementById('undoBtn').disabled=h.length===0||!!shared.drawingBy||local.animating;
+  document.getElementById('undoBtn').disabled=h.length===0||!!shared.drawingBy;
 }
 async function draw(){
   const member=local.currentMember;

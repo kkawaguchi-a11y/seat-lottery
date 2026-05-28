@@ -175,11 +175,28 @@ const STATE=db.ref('state');
 const REGULAR_MEMBERS=['安松','鵜野','金原','熊谷','山口','宍戸','小森','仁平','川口','倉田','大原','中原','鎮西','本橋','木村','傳田'];
 const MATSUMOTO='松本';
 const MATSUMOTO_SEAT='松本さん席';
+// 席次は No.1〜14 の14席 + 松本さん席1席 = 計15席
 const NUMERIC_SEATS=[1,2,3,4,5,6,7,8,9,10,11,12,13,14];
+const ALL_MEMBERS=[...REGULAR_MEMBERS,MATSUMOTO]; // 17名
 const DOW=new Date().getDay();
 const IS_FRIDAY=DOW===5;
 let local={currentMember:null,animating:false};
 let shared={assignments:{},matsumotoUnlocked:false,drawingBy:null,history:[]};
+
+// 起動時にFirebaseデータを自動修復する
+async function repairIfNeeded(data){
+  if(!data||!data.assignments)return;
+  const asgn=data.assignments;
+  // 松本さん席が複数のメンバーに割り当てられていたらリセット
+  const matsumotoSeatHolders=Object.entries(asgn).filter(function(e){return e[1]===MATSUMOTO_SEAT;});
+  if(matsumotoSeatHolders.length>1){
+    console.log('データ修復: 松本さん席が複数あるためリセット');
+    await doReset();
+    return true;
+  }
+  return false;
+}
+
 STATE.on('value',function(snap){
   const d=snap.val()||{};
   shared.assignments=d.assignments||{};
@@ -200,10 +217,14 @@ db.ref('.info/connected').on('value',function(snap){
   document.getElementById('syncDot').className='sync-dot '+(on?'online':'offline');
   document.getElementById('syncLabel').textContent=on?'リアルタイム同期中':'オフライン';
 });
+
+// 利用可能な席：No.1〜14 のうち未使用 + 松本さん席（固定解除時のみ）
 function availableSeats(){
   const usedNums=new Set(Object.values(shared.assignments).filter(function(s){return typeof s==='number';}));
   const seats=NUMERIC_SEATS.filter(function(s){return!usedNums.has(s);});
-  if((IS_FRIDAY||shared.matsumotoUnlocked)&&!(MATSUMOTO in shared.assignments)){
+  // 松本さん席は固定解除済み かつ まだ誰も松本さん席を持っていない場合のみ追加
+  const matsumotoSeatTaken=Object.values(shared.assignments).indexOf(MATSUMOTO_SEAT)>=0;
+  if((IS_FRIDAY||shared.matsumotoUnlocked)&&!matsumotoSeatTaken){
     seats.push(MATSUMOTO_SEAT);
   }
   return seats;
@@ -259,7 +280,7 @@ async function draw(){
   local.currentMember=null;
   renderGrid();updateWho();updateDrawBtn();
   showResultOverlay(member,finalSeat);
-  const lottery=IS_FRIDAY||shared.matsumotoUnlocked?[...REGULAR_MEMBERS,MATSUMOTO]:REGULAR_MEMBERS;
+  const lottery=IS_FRIDAY||shared.matsumotoUnlocked?ALL_MEMBERS:REGULAR_MEMBERS;
   if(lottery.every(function(m){return m in shared.assignments;}))setTimeout(launchConfetti,600);
 }
 async function unlockMatsumoto(){
@@ -272,6 +293,7 @@ function confirmReset(){
 }
 async function doReset(){
   const dow=new Date().getDay();
+  // 松本さんは金曜以外は「松本さん席」固定、金曜はくじ参加
   const ns={assignments:{},matsumotoUnlocked:false,drawingBy:null,lastResetDate:dateStr(),history:[]};
   if(dow!==5)ns.assignments[MATSUMOTO]=MATSUMOTO_SEAT;
   await STATE.set(ns);
@@ -334,7 +356,7 @@ function rebuildTable(){
   document.getElementById('resultsPanel').style.display='';
 }
 function updateProgress(){
-  const lottery=(!IS_FRIDAY&&!shared.matsumotoUnlocked)?REGULAR_MEMBERS:[...REGULAR_MEMBERS,MATSUMOTO];
+  const lottery=(!IS_FRIDAY&&!shared.matsumotoUnlocked)?REGULAR_MEMBERS:ALL_MEMBERS;
   const total=lottery.length;
   const done=lottery.filter(function(m){
     if(!IS_FRIDAY&&!shared.matsumotoUnlocked&&m===MATSUMOTO)return false;
@@ -346,7 +368,7 @@ function updateProgress(){
 function renderGrid(){
   const g=document.getElementById('memberGrid');
   g.innerHTML='';
-  [...REGULAR_MEMBERS,MATSUMOTO].forEach(function(m){
+  ALL_MEMBERS.forEach(function(m){
     const div=document.createElement('div');
     const fixed=isFixed(m);
     const done=isDone(m);
@@ -412,7 +434,8 @@ function sleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
   if(IS_FRIDAY)badge.classList.add('friday');
   updateNotice();
   const snap=await STATE.once('value');
-  if(!snap.val())await doReset();
+  const repaired=await repairIfNeeded(snap.val());
+  if(!repaired&&!snap.val())await doReset();
   scheduleAutoReset();
 })();
 </script>

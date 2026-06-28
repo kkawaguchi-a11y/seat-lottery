@@ -413,7 +413,8 @@ function sleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
   badge.textContent='本日 '+days[DOW]+'曜日';
   if(IS_FRIDAY)badge.classList.add('friday');
   updateNotice();
-  await doReset();
+  const snap=await STATE.once('value');
+  if(!snap.val()){await doReset();}
   scheduleAutoReset();
 })();
 </script>

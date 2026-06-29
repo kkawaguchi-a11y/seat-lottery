@@ -8,100 +8,92 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 <style>
-  :root {
-    --bg: #0d0d0f; --panel: #16161a; --border: #2a2a35;
-    --gold: #e8c87a; --gold2: #c9993a; --red: #c94040;
-    --white: #f0ece0; --muted: #7a7870;
-    --done-bg: #1a2a1a; --done-border: #3a5a3a; --done-text: #6aaa6a;
-    --fixed-bg: #1a1a2e; --fixed-border: #3a3a6a; --fixed-text: #8888cc;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: var(--bg); color: var(--white); font-family: 'Noto Serif JP', serif; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 28px 16px 56px; background-image: radial-gradient(ellipse 80% 40% at 50% 0%, rgba(232,200,122,0.07) 0%, transparent 70%), repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(255,255,255,0.018) 40px), repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(255,255,255,0.018) 40px); }
-  header { text-align: center; margin-bottom: 28px; }
-  .title-en { font-family:'Space Mono',monospace; font-size:10px; letter-spacing:6px; color:var(--gold2); text-transform:uppercase; margin-bottom:8px; }
-  h1 { font-size:clamp(24px,5.5vw,42px); font-weight:900; letter-spacing:0.18em; color:var(--gold); text-shadow:0 0 40px rgba(232,200,122,0.3); }
-  h1::before, h1::after { content:'―'; color:var(--gold2); font-size:0.5em; vertical-align:middle; margin:0 10px; }
-  .subtitle { font-size:11px; color:var(--muted); margin-top:8px; letter-spacing:2px; }
-  .day-badge { display:inline-block; margin-top:10px; font-family:'Space Mono',monospace; font-size:10px; letter-spacing:3px; padding:4px 12px; border-radius:20px; border:1px solid var(--border); color:var(--muted); }
-  .day-badge.friday { border-color:var(--gold2); color:var(--gold); background:rgba(232,200,122,0.08); }
-  .sync-bar { display:flex; align-items:center; gap:8px; font-family:'Space Mono',monospace; font-size:10px; letter-spacing:2px; color:var(--muted); margin-top:8px; }
-  .sync-dot { width:7px; height:7px; border-radius:50%; background:var(--muted); transition:background 0.4s; }
-  .sync-dot.online { background:#6aaa6a; box-shadow:0 0 6px #6aaa6a; }
-  .sync-dot.offline { background:var(--red); }
-  .wrap { width:100%; max-width:860px; display:flex; flex-direction:column; gap:20px; }
-  .panel { background:var(--panel); border:1px solid var(--border); border-radius:2px; padding:20px 20px 22px; position:relative; }
-  .panel::before { content:''; position:absolute; top:4px; left:4px; right:4px; bottom:4px; border:1px solid rgba(232,200,122,0.06); pointer-events:none; }
-  .panel-title { font-family:'Space Mono',monospace; font-size:10px; letter-spacing:4px; color:var(--gold2); text-transform:uppercase; margin-bottom:16px; padding-bottom:10px; border-bottom:1px solid var(--border); }
-  .step-header { display:flex; align-items:center; font-size:13px; letter-spacing:2px; color:var(--white); margin-bottom:14px; }
-  .step-badge { display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; border-radius:50%; background:var(--gold2); color:#0d0d0f; font-family:'Space Mono',monospace; font-size:11px; font-weight:700; margin-right:8px; flex-shrink:0; }
-  .member-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(90px,1fr)); gap:8px; }
-  .member-chip { padding:10px 6px; background:#1c1c22; border:1px solid var(--border); border-radius:2px; text-align:center; cursor:pointer; transition:all 0.18s; user-select:none; }
-  .member-chip:hover:not(.done):not(.me):not(.fixed) { border-color:var(--gold2); background:#242430; }
-  .member-chip.me { background:rgba(232,200,122,0.12); border-color:var(--gold); box-shadow:0 0 14px rgba(232,200,122,0.25); }
-  .member-chip.done { background:var(--done-bg); border-color:var(--done-border); cursor:default; }
-  .member-chip.fixed { background:var(--fixed-bg); border-color:var(--fixed-border); cursor:default; }
-  .chip-name { font-size:14px; font-weight:700; color:var(--white); }
-  .member-chip.me .chip-name { color:var(--gold); }
-  .member-chip.done .chip-name { color:var(--done-text); font-size:12px; }
-  .member-chip.fixed .chip-name { color:var(--fixed-text); }
-  .chip-sub { font-family:'Space Mono',monospace; font-size:9px; color:var(--muted); margin-top:3px; }
-  .member-chip.done .chip-sub { color:var(--done-text); }
-  .member-chip.me .chip-sub { color:var(--gold2); }
-  .member-chip.fixed .chip-sub { color:var(--fixed-text); opacity:0.8; }
-  .unlock-btn { display:inline-block; margin-top:5px; font-family:'Space Mono',monospace; font-size:9px; letter-spacing:1px; padding:3px 8px; border-radius:2px; cursor:pointer; background:transparent; border:1px solid var(--fixed-border); color:var(--fixed-text); transition:all 0.18s; }
-  .unlock-btn:hover { background:rgba(136,136,204,0.15); border-color:#8888cc; color:#aaaaee; }
-  .draw-stage { display:flex; flex-direction:column; align-items:center; gap:18px; }
-  .who-draws { font-size:13px; letter-spacing:2px; color:var(--muted); text-align:center; }
-  .who-draws strong { color:var(--gold); font-size:18px; letter-spacing:3px; }
-  .slot-box { display:flex; align-items:center; gap:16px; flex-wrap:wrap; justify-content:center; }
-  .slot { background:#141418; border:2px solid var(--border); border-radius:2px; width:120px; height:76px; display:flex; flex-direction:column; align-items:center; justify-content:center; transition:border-color 0.3s; }
-  .slot.active { border-color:var(--gold); background:#1c1c14; }
-  .slot-label { font-family:'Space Mono',monospace; font-size:8px; letter-spacing:3px; color:var(--muted); margin-bottom:4px; }
-  .slot-val { font-size:22px; font-weight:900; color:var(--white); letter-spacing:1px; min-height:30px; display:flex; align-items:center; }
-  .slot.active .slot-val { color:var(--gold); text-shadow:0 0 20px rgba(232,200,122,0.6); }
-  @keyframes spin-tick { 0%{transform:translateY(0);opacity:1;}30%{transform:translateY(-6px);opacity:0;}60%{transform:translateY(6px);opacity:0;}100%{transform:translateY(0);opacity:1;} }
-  .spinning .slot-val { animation:spin-tick 0.1s ease-in-out; }
-  .btn { font-family:'Space Mono',monospace; font-size:11px; letter-spacing:2px; text-transform:uppercase; border:none; border-radius:1px; padding:13px 28px; cursor:pointer; transition:all 0.2s; }
-  .btn-primary { background:var(--gold); color:#0d0d0f; font-weight:700; }
-  .btn-primary:hover:not(:disabled) { background:#f0d88a; transform:translateY(-1px); box-shadow:0 4px 20px rgba(232,200,122,0.4); }
-  .btn-primary:disabled { opacity:0.35; cursor:not-allowed; transform:none; box-shadow:none; }
-  .btn-warning { background:transparent; color:var(--gold2); border:1px solid rgba(201,153,58,0.45); }
-  .btn-warning:hover:not(:disabled) { background:rgba(201,153,58,0.1); border-color:var(--gold2); }
-  .btn-warning:disabled { opacity:0.3; cursor:not-allowed; }
-  .btn-danger { background:transparent; color:var(--red); border:1px solid rgba(201,64,64,0.35); }
-  .btn-danger:hover { background:rgba(201,64,64,0.1); border-color:var(--red); }
-  .btn-row { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
-  .prog-wrap { width:100%; max-width:380px; height:2px; background:var(--border); border-radius:1px; overflow:hidden; }
-  .prog-bar { height:100%; background:linear-gradient(90deg,var(--gold2),var(--gold)); transition:width 0.5s ease; }
-  .status-bar { font-family:'Space Mono',monospace; font-size:10px; letter-spacing:2px; color:var(--muted); text-align:center; }
-  .results-table { width:100%; border-collapse:collapse; }
-  .results-table th { font-family:'Space Mono',monospace; font-size:9px; letter-spacing:3px; color:var(--gold2); text-transform:uppercase; padding:7px 12px; text-align:left; border-bottom:1px solid var(--border); }
-  .results-table td { padding:8px 12px; border-bottom:1px solid rgba(42,42,53,0.4); font-size:14px; }
-  .results-table tr:last-child td { border-bottom:none; }
-  .col-seat { font-family:'Space Mono',monospace; color:var(--gold); font-weight:700; width:120px; }
-  .col-member { font-weight:700; }
-  .col-fixed { font-size:11px; color:var(--fixed-text); font-family:'Space Mono',monospace; }
-  @keyframes row-in { from{opacity:0;transform:translateX(-8px);}to{opacity:1;transform:translateX(0);} }
-  .row-new { animation:row-in 0.35s ease-out; }
-  .result-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.75); display:flex; align-items:center; justify-content:center; z-index:998; opacity:0; pointer-events:none; transition:opacity 0.3s; }
-  .result-overlay.show { opacity:1; pointer-events:all; }
-  .result-card { background:var(--panel); border:1px solid var(--gold); border-radius:2px; padding:36px 52px; text-align:center; box-shadow:0 0 60px rgba(232,200,122,0.2); transform:scale(0.9); transition:transform 0.3s; max-width:90vw; }
-  .result-overlay.show .result-card { transform:scale(1); }
-  .rc-label { font-family:'Space Mono',monospace; font-size:10px; letter-spacing:4px; color:var(--gold2); margin-bottom:10px; }
-  .rc-member { font-size:26px; font-weight:900; color:var(--white); margin-bottom:6px; letter-spacing:2px; }
-  .rc-arrow { font-size:18px; color:var(--gold2); margin:8px 0; }
-  .rc-seat { font-size:56px; font-weight:900; color:var(--gold); text-shadow:0 0 30px rgba(232,200,122,0.5); }
-  .rc-seat-label { font-family:'Space Mono',monospace; font-size:11px; color:var(--muted); letter-spacing:3px; margin-top:4px; }
-  .rc-close { margin-top:24px; font-family:'Space Mono',monospace; font-size:10px; letter-spacing:3px; background:transparent; border:1px solid var(--border); color:var(--muted); padding:8px 20px; cursor:pointer; border-radius:1px; transition:all 0.2s; text-transform:uppercase; }
-  .rc-close:hover { color:var(--white); border-color:var(--muted); }
-  .notice { background:rgba(136,136,204,0.08); border:1px solid var(--fixed-border); border-radius:2px; padding:10px 14px; font-size:12px; color:var(--fixed-text); letter-spacing:1px; display:flex; align-items:center; gap:8px; }
-  .notice.thu { background:rgba(232,200,122,0.08); border-color:var(--gold2); color:var(--gold2); }
-  .confetti-wrap { position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:999; overflow:hidden; }
-  .cp { position:absolute; width:8px; height:8px; top:-20px; border-radius:50%; animation:cp-fall linear forwards; }
-  @keyframes cp-fall { 0%{top:-20px;opacity:1;transform:rotate(0deg) translateX(0);}100%{top:110vh;opacity:0;transform:rotate(720deg) translateX(var(--d));} }
-  .drawing-lock { position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:900; display:none; align-items:center; justify-content:center; }
-  .drawing-lock.show { display:flex; }
-  .drawing-lock-msg { font-family:'Space Mono',monospace; font-size:13px; letter-spacing:3px; color:var(--gold); text-align:center; }
+  :root{--bg:#0d0d0f;--panel:#16161a;--border:#2a2a35;--gold:#e8c87a;--gold2:#c9993a;--red:#c94040;--white:#f0ece0;--muted:#7a7870;--done-bg:#1a2a1a;--done-border:#3a5a3a;--done-text:#6aaa6a;--fixed-bg:#1a1a2e;--fixed-border:#3a3a6a;--fixed-text:#8888cc;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--white);font-family:'Noto Serif JP',serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:28px 16px 56px;background-image:radial-gradient(ellipse 80% 40% at 50% 0%,rgba(232,200,122,0.07) 0%,transparent 70%),repeating-linear-gradient(0deg,transparent,transparent 39px,rgba(255,255,255,0.018) 40px),repeating-linear-gradient(90deg,transparent,transparent 39px,rgba(255,255,255,0.018) 40px);}
+  header{text-align:center;margin-bottom:28px;}
+  .title-en{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:6px;color:var(--gold2);text-transform:uppercase;margin-bottom:8px;}
+  h1{font-size:clamp(24px,5.5vw,42px);font-weight:900;letter-spacing:0.18em;color:var(--gold);text-shadow:0 0 40px rgba(232,200,122,0.3);}
+  h1::before,h1::after{content:'―';color:var(--gold2);font-size:0.5em;vertical-align:middle;margin:0 10px;}
+  .subtitle{font-size:11px;color:var(--muted);margin-top:8px;letter-spacing:2px;}
+  .day-badge{display:inline-block;margin-top:10px;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:3px;padding:4px 12px;border-radius:20px;border:1px solid var(--border);color:var(--muted);}
+  .day-badge.friday{border-color:var(--gold2);color:var(--gold);background:rgba(232,200,122,0.08);}
+  .sync-bar{display:flex;align-items:center;gap:8px;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:2px;color:var(--muted);margin-top:8px;justify-content:center;}
+  .sync-dot{width:7px;height:7px;border-radius:50%;background:var(--muted);transition:background 0.4s;}
+  .sync-dot.online{background:#6aaa6a;box-shadow:0 0 6px #6aaa6a;}
+  .sync-dot.offline{background:var(--red);}
+  .wrap{width:100%;max-width:860px;display:flex;flex-direction:column;gap:20px;}
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:2px;padding:20px 20px 22px;position:relative;}
+  .panel::before{content:'';position:absolute;top:4px;left:4px;right:4px;bottom:4px;border:1px solid rgba(232,200,122,0.06);pointer-events:none;}
+  .panel-title{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:4px;color:var(--gold2);text-transform:uppercase;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  .step-header{display:flex;align-items:center;font-size:13px;letter-spacing:2px;color:var(--white);margin-bottom:14px;}
+  .step-badge{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--gold2);color:#0d0d0f;font-family:'Space Mono',monospace;font-size:11px;font-weight:700;margin-right:8px;flex-shrink:0;}
+  .member-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px;}
+  .member-chip{padding:10px 6px;background:#1c1c22;border:1px solid var(--border);border-radius:2px;text-align:center;cursor:pointer;transition:all 0.18s;user-select:none;}
+  .member-chip:hover:not(.done):not(.me):not(.fixed){border-color:var(--gold2);background:#242430;}
+  .member-chip.me{background:rgba(232,200,122,0.12);border-color:var(--gold);box-shadow:0 0 14px rgba(232,200,122,0.25);}
+  .member-chip.done{background:var(--done-bg);border-color:var(--done-border);cursor:default;}
+  .member-chip.fixed{background:var(--fixed-bg);border-color:var(--fixed-border);cursor:default;}
+  .chip-name{font-size:14px;font-weight:700;color:var(--white);}
+  .member-chip.me .chip-name{color:var(--gold);}
+  .member-chip.done .chip-name{color:var(--done-text);font-size:12px;}
+  .member-chip.fixed .chip-name{color:var(--fixed-text);}
+  .chip-sub{font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);margin-top:3px;}
+  .member-chip.done .chip-sub{color:var(--done-text);}
+  .member-chip.me .chip-sub{color:var(--gold2);}
+  .member-chip.fixed .chip-sub{color:var(--fixed-text);opacity:0.8;}
+  .unlock-btn{display:inline-block;margin-top:5px;font-family:'Space Mono',monospace;font-size:9px;letter-spacing:1px;padding:3px 8px;border-radius:2px;cursor:pointer;background:transparent;border:1px solid var(--fixed-border);color:var(--fixed-text);transition:all 0.18s;}
+  .unlock-btn:hover{background:rgba(136,136,204,0.15);border-color:#8888cc;color:#aaaaee;}
+  .draw-stage{display:flex;flex-direction:column;align-items:center;gap:18px;}
+  .who-draws{font-size:13px;letter-spacing:2px;color:var(--muted);text-align:center;}
+  .who-draws strong{color:var(--gold);font-size:18px;letter-spacing:3px;}
+  .slot-box{display:flex;align-items:center;gap:16px;flex-wrap:wrap;justify-content:center;}
+  .slot{background:#141418;border:2px solid var(--border);border-radius:2px;width:120px;height:76px;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:border-color 0.3s;}
+  .slot.active{border-color:var(--gold);background:#1c1c14;}
+  .slot-label{font-family:'Space Mono',monospace;font-size:8px;letter-spacing:3px;color:var(--muted);margin-bottom:4px;}
+  .slot-val{font-size:22px;font-weight:900;color:var(--white);letter-spacing:1px;min-height:30px;display:flex;align-items:center;}
+  .slot.active .slot-val{color:var(--gold);text-shadow:0 0 20px rgba(232,200,122,0.6);}
+  @keyframes spin-tick{0%{transform:translateY(0);opacity:1;}30%{transform:translateY(-6px);opacity:0;}60%{transform:translateY(6px);opacity:0;}100%{transform:translateY(0);opacity:1;}}
+  .spinning .slot-val{animation:spin-tick 0.1s ease-in-out;}
+  .btn{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:2px;text-transform:uppercase;border:none;border-radius:1px;padding:13px 28px;cursor:pointer;transition:all 0.2s;}
+  .btn-primary{background:var(--gold);color:#0d0d0f;font-weight:700;}
+  .btn-primary:hover:not(:disabled){background:#f0d88a;transform:translateY(-1px);box-shadow:0 4px 20px rgba(232,200,122,0.4);}
+  .btn-primary:disabled{opacity:0.35;cursor:not-allowed;transform:none;box-shadow:none;}
+  .btn-warning{background:transparent;color:var(--gold2);border:1px solid rgba(201,153,58,0.45);}
+  .btn-warning:hover:not(:disabled){background:rgba(201,153,58,0.1);border-color:var(--gold2);}
+  .btn-warning:disabled{opacity:0.3;cursor:not-allowed;}
+  .btn-danger{background:transparent;color:var(--red);border:1px solid rgba(201,64,64,0.35);}
+  .btn-danger:hover{background:rgba(201,64,64,0.1);border-color:var(--red);}
+  .btn-row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;}
+  .prog-wrap{width:100%;max-width:380px;height:2px;background:var(--border);border-radius:1px;overflow:hidden;}
+  .prog-bar{height:100%;background:linear-gradient(90deg,var(--gold2),var(--gold));transition:width 0.5s ease;}
+  .status-bar{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:2px;color:var(--muted);text-align:center;}
+  .results-table{width:100%;border-collapse:collapse;}
+  .results-table th{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:3px;color:var(--gold2);text-transform:uppercase;padding:7px 12px;text-align:left;border-bottom:1px solid var(--border);}
+  .results-table td{padding:8px 12px;border-bottom:1px solid rgba(42,42,53,0.4);font-size:14px;}
+  .results-table tr:last-child td{border-bottom:none;}
+  .col-seat{font-family:'Space Mono',monospace;color:var(--gold);font-weight:700;width:130px;}
+  .col-member{font-weight:700;}
+  .col-tag{font-size:11px;color:var(--fixed-text);font-family:'Space Mono',monospace;}
+  .result-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.75);display:flex;align-items:center;justify-content:center;z-index:998;opacity:0;pointer-events:none;transition:opacity 0.3s;}
+  .result-overlay.show{opacity:1;pointer-events:all;}
+  .result-card{background:var(--panel);border:1px solid var(--gold);border-radius:2px;padding:36px 52px;text-align:center;box-shadow:0 0 60px rgba(232,200,122,0.2);transform:scale(0.9);transition:transform 0.3s;max-width:90vw;}
+  .result-overlay.show .result-card{transform:scale(1);}
+  .rc-label{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:4px;color:var(--gold2);margin-bottom:10px;}
+  .rc-member{font-size:26px;font-weight:900;color:var(--white);margin-bottom:6px;letter-spacing:2px;}
+  .rc-arrow{font-size:18px;color:var(--gold2);margin:8px 0;}
+  .rc-seat{font-size:52px;font-weight:900;color:var(--gold);text-shadow:0 0 30px rgba(232,200,122,0.5);}
+  .rc-seat-label{font-family:'Space Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:3px;margin-top:4px;}
+  .rc-close{margin-top:24px;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:3px;background:transparent;border:1px solid var(--border);color:var(--muted);padding:8px 20px;cursor:pointer;border-radius:1px;transition:all 0.2s;text-transform:uppercase;}
+  .rc-close:hover{color:var(--white);border-color:var(--muted);}
+  .notice{background:rgba(136,136,204,0.08);border:1px solid var(--fixed-border);border-radius:2px;padding:10px 14px;font-size:12px;color:var(--fixed-text);letter-spacing:1px;display:flex;align-items:center;gap:8px;}
+  .notice.active{background:rgba(232,200,122,0.08);border-color:var(--gold2);color:var(--gold2);}
+  .confetti-wrap{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:999;overflow:hidden;}
+  .cp{position:absolute;width:8px;height:8px;top:-20px;border-radius:50%;animation:cp-fall linear forwards;}
+  @keyframes cp-fall{0%{top:-20px;opacity:1;transform:rotate(0deg) translateX(0);}100%{top:110vh;opacity:0;transform:rotate(720deg) translateX(var(--d));}}
+  .drawing-lock{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:900;display:none;align-items:center;justify-content:center;}
+  .drawing-lock.show{display:flex;}
+  .drawing-lock-msg{font-family:'Space Mono',monospace;font-size:13px;letter-spacing:3px;color:var(--gold);text-align:center;}
 </style>
 </head>
 <body>
@@ -110,7 +102,7 @@
   <h1>席次くじ引き</h1>
   <div class="subtitle">17名 / 席次 No.1–14 + 松本さん席</div>
   <div class="day-badge" id="dayBadge"></div>
-  <div class="sync-bar" style="justify-content:center">
+  <div class="sync-bar">
     <div class="sync-dot" id="syncDot"></div>
     <span id="syncLabel">接続中...</span>
   </div>
@@ -128,7 +120,7 @@
       <div class="slot-box">
         <div class="slot" id="slotMember"><div class="slot-label">MEMBER</div><div class="slot-val" id="slotMemberVal">—</div></div>
         <div style="font-size:22px;color:var(--gold2);display:none" id="slotArrow">→</div>
-        <div class="slot" id="slotSeat"><div class="slot-label">SEAT No.</div><div class="slot-val" id="slotSeatVal">—</div></div>
+        <div class="slot" id="slotSeat"><div class="slot-label">SEAT</div><div class="slot-val" id="slotSeatVal">—</div></div>
       </div>
       <div class="prog-wrap"><div class="prog-bar" id="progBar" style="width:0%"></div></div>
       <div class="btn-row">
@@ -153,7 +145,7 @@
     <div class="rc-member" id="rcMember">—</div>
     <div class="rc-arrow">▼</div>
     <div class="rc-seat" id="rcSeat">—</div>
-    <div class="rc-seat-label">SEAT No.</div>
+    <div class="rc-seat-label" id="rcSeatLabel">SEAT No.</div>
     <button class="rc-close" onclick="closeOverlay()">閉じる ✕</button>
   </div>
 </div>
@@ -162,7 +154,7 @@
 </div>
 <div class="confetti-wrap" id="confetti"></div>
 <script>
-const firebaseConfig = {
+const firebaseConfig={
   apiKey:"AIzaSyAuYuZJw5y1CIRAV9XENioRE7qHPw-gSS4",
   authDomain:"seat-lottery-13d7c.firebaseapp.com",
   databaseURL:"https://seat-lottery-13d7c-default-rtdb.firebaseio.com",
@@ -177,87 +169,95 @@ const STATE=db.ref('state');
 const REGULAR_MEMBERS=['安松','鵜野','金原','熊谷','山口','宍戸','小森','仁平','川口','倉田','大原','中原','鎮西','本橋','木村','傳田'];
 const MATSUMOTO='松本';
 const MATSUMOTO_SEAT='松本さん席';
-const ALL_SEATS=[1,2,3,4,5,6,7,8,9,10,11,12,13,14];
+const NUMERIC_SEATS=[1,2,3,4,5,6,7,8,9,10,11,12,13,14];
+const ALL_MEMBERS=[...REGULAR_MEMBERS,MATSUMOTO];
 const DOW=new Date().getDay();
 const IS_FRIDAY=DOW===5;
-let localState={currentMember:null,animating:false};
-let shared={assignments:{},matsumotoUnlocked:false,drawingBy:null,lastResetDate:'',history:[]};
-STATE.on('value',snap=>{
-  const data=snap.val()||{};
-  shared.assignments=data.assignments||{};
-  shared.matsumotoUnlocked=data.matsumotoUnlocked||false;
-  shared.drawingBy=data.drawingBy||null;
-  shared.lastResetDate=data.lastResetDate||'';
-  shared.history=data.history||[];
-  const lockEl=document.getElementById('drawingLock');
-  if(shared.drawingBy&&shared.drawingBy!==localState.currentMember){
-    lockEl.classList.add('show');
-    lockEl.querySelector('.drawing-lock-msg').innerHTML=`🎋 ${shared.drawingBy} さんが抽選中...<br><span style="font-size:10px;color:var(--muted);margin-top:8px;display:block">しばらくお待ちください</span>`;
-  } else { lockEl.classList.remove('show'); }
-  renderGrid();updateWho();updateDrawBtn();updateUndoBtn();rebuildResultsTable();updateProgress();updateNotice();
+let local={currentMember:null,animating:false};
+let shared={assignments:{},matsumotoUnlocked:false,drawingBy:null,history:[]};
+
+STATE.on('value',function(snap){
+  const d=snap.val()||{};
+  shared.assignments=d.assignments||{};
+  shared.matsumotoUnlocked=d.matsumotoUnlocked||false;
+  shared.drawingBy=d.drawingBy||null;
+  shared.history=d.history||[];
+  const lock=document.getElementById('drawingLock');
+  if(shared.drawingBy&&shared.drawingBy!==local.currentMember){
+    lock.classList.add('show');
+    lock.querySelector('.drawing-lock-msg').innerHTML='🎋 '+shared.drawingBy+' さんが抽選中...<br><span style="font-size:10px;color:var(--muted);margin-top:8px;display:block">しばらくお待ちください</span>';
+  } else {
+    lock.classList.remove('show');
+  }
+  renderGrid();updateWho();updateDrawBtn();updateUndoBtn();rebuildTable();updateProgress();updateNotice();
 });
-db.ref('.info/connected').on('value',snap=>{
-  const online=snap.val();
-  document.getElementById('syncDot').className='sync-dot '+(online?'online':'offline');
-  document.getElementById('syncLabel').textContent=online?'リアルタイム同期中':'オフライン';
+
+db.ref('.info/connected').on('value',function(snap){
+  const on=snap.val();
+  document.getElementById('syncDot').className='sync-dot '+(on?'online':'offline');
+  document.getElementById('syncLabel').textContent=on?'リアルタイム同期中':'オフライン';
 });
-function assignedNumericSeats(){return new Set(Object.values(shared.assignments).filter(s=>typeof s==='number'));}
-function availableSeats(){const used=assignedNumericSeats();return ALL_SEATS.filter(s=>!used.has(s));}
+
+function availableSeats(){
+  const usedNums=new Set(Object.values(shared.assignments).filter(function(s){return typeof s==='number';}));
+  const seats=NUMERIC_SEATS.filter(function(s){return!usedNums.has(s);});
+  const matsumotoSeatTaken=Object.values(shared.assignments).indexOf(MATSUMOTO_SEAT)>=0;
+  if((IS_FRIDAY||shared.matsumotoUnlocked)&&!matsumotoSeatTaken){seats.push(MATSUMOTO_SEAT);}
+  return seats;
+}
 function isFixed(m){return!IS_FRIDAY&&!shared.matsumotoUnlocked&&m===MATSUMOTO;}
 function isDone(m){return!isFixed(m)&&(m in shared.assignments);}
-function fbSet(path,val){return db.ref('state/'+path).set(val);}
-function fbRemove(path){return db.ref('state/'+path).remove();}
 function selectMember(m){
-  if(isFixed(m)||isDone(m)||localState.animating||shared.drawingBy)return;
-  localState.currentMember=localState.currentMember===m?null:m;
+  if(isFixed(m)||isDone(m)||local.animating||shared.drawingBy)return;
+  local.currentMember=local.currentMember===m?null:m;
   updateDrawBtn();renderGrid();updateWho();
 }
 function updateWho(){
-  const el=document.getElementById('whoDraws');
-  el.innerHTML=localState.currentMember?`<strong>${localState.currentMember}</strong> さんのくじ`:'名前を選択してください';
+  document.getElementById('whoDraws').innerHTML=local.currentMember?'<strong>'+local.currentMember+'</strong> さんのくじ':'名前を選択してください';
 }
 function updateDrawBtn(){
-  const canDraw=localState.currentMember&&!isDone(localState.currentMember)&&availableSeats().length>0&&!localState.animating&&!shared.drawingBy;
-  document.getElementById('drawBtn').disabled=!canDraw;
+  const ok=local.currentMember&&!isDone(local.currentMember)&&availableSeats().length>0&&!local.animating&&!shared.drawingBy;
+  document.getElementById('drawBtn').disabled=!ok;
 }
 function updateUndoBtn(){
-  const undoable=(shared.history||[]).filter(h=>h.member!==MATSUMOTO||IS_FRIDAY||shared.matsumotoUnlocked);
-  document.getElementById('undoBtn').disabled=undoable.length===0||!!shared.drawingBy||localState.animating;
+  const h=shared.history||[];
+  document.getElementById('undoBtn').disabled=h.length===0||!!shared.drawingBy;
 }
 async function draw(){
-  const member=localState.currentMember;
-  if(!member||localState.animating)return;
+  const member=local.currentMember;
+  if(!member||local.animating)return;
   const avail=availableSeats();
   if(!avail.length)return;
-  await fbSet('drawingBy',member);
-  localState.animating=true;
-  updateDrawBtn();
+  await db.ref('state/drawingBy').set(member);
+  local.animating=true;updateDrawBtn();
   const finalSeat=avail[Math.floor(Math.random()*avail.length)];
   const slotM=document.getElementById('slotMember');
   const slotS=document.getElementById('slotSeat');
-  const valM=document.getElementById('slotMemberVal');
-  const valS=document.getElementById('slotSeatVal');
   document.getElementById('slotArrow').style.display='';
   slotM.classList.add('active');slotS.classList.add('active');
-  valM.textContent=member;
+  document.getElementById('slotMemberVal').textContent=member;
   for(let i=0;i<20;i++){
     slotS.classList.add('spinning');
-    valS.textContent=avail[Math.floor(Math.random()*avail.length)];
+    const r=avail[Math.floor(Math.random()*avail.length)];
+    document.getElementById('slotSeatVal').textContent=typeof r==='number'?r:'松本席';
     await sleep(55+i*4);
     slotS.classList.remove('spinning');
   }
-  valS.textContent=typeof finalSeat==='number'?finalSeat:'松本席';
+  document.getElementById('slotSeatVal').textContent=typeof finalSeat==='number'?finalSeat:'松本席';
   slotM.classList.remove('active');slotS.classList.remove('active');
-  const newHistory=[...(shared.history||[]),{member,seat:finalSeat}];
-  await db.ref('state').update({['assignments/'+member]:finalSeat,drawingBy:null,history:newHistory});
-  localState.animating=false;localState.currentMember=null;
+  const newHistory=[...(shared.history||[]),{member:member,seat:finalSeat}];
+  await db.ref('state/assignments/'+member).set(finalSeat);
+  await db.ref('state/history').set(newHistory);
+  await db.ref('state/drawingBy').remove();
+  local.animating=false;local.currentMember=null;
   renderGrid();updateWho();updateDrawBtn();
   showResultOverlay(member,finalSeat);
-  const lottery=IS_FRIDAY||shared.matsumotoUnlocked?[...REGULAR_MEMBERS,MATSUMOTO]:REGULAR_MEMBERS;
-  if(lottery.every(m=>m in shared.assignments))setTimeout(launchConfetti,600);
+  const lottery=IS_FRIDAY||shared.matsumotoUnlocked?ALL_MEMBERS:REGULAR_MEMBERS;
+  if(lottery.every(function(m){return m in shared.assignments;}))setTimeout(launchConfetti,600);
 }
 async function unlockMatsumoto(){
-  await db.ref('state').update({matsumotoUnlocked:true,['assignments/'+MATSUMOTO]:null});
+  await db.ref('state/matsumotoUnlocked').set(true);
+  await db.ref('state/assignments/'+MATSUMOTO).remove();
 }
 function confirmReset(){
   if(!confirm('全ての結果をリセットしますか？\n全員の画面がリセットされます。'))return;
@@ -265,16 +265,14 @@ function confirmReset(){
 }
 async function doReset(){
   const dow=new Date().getDay();
-  const newState={assignments:{},matsumotoUnlocked:false,drawingBy:null,lastResetDate:toDateStr(new Date()),history:[]};
-  if(dow!==5)newState.assignments[MATSUMOTO]=MATSUMOTO_SEAT;
-  await STATE.set(newState);
-  localState.currentMember=null;localState.animating=false;
-  document.getElementById('slotMemberVal').textContent='—';
-  document.getElementById('slotSeatVal').textContent='—';
-  document.getElementById('slotArrow').style.display='none';
+  const ns={assignments:{},matsumotoUnlocked:false,drawingBy:null,lastResetDate:dateStr(),history:[]};
+  if(dow!==5)ns.assignments[MATSUMOTO]=MATSUMOTO_SEAT;
+  await STATE.set(ns);
+  local.currentMember=null;local.animating=false;
+  resetSlots();
   const days=['日','月','火','水','木','金','土'];
   const badge=document.getElementById('dayBadge');
-  badge.textContent=`本日 ${days[dow]}曜日`;
+  badge.textContent='本日 '+days[dow]+'曜日';
   badge.classList.toggle('friday',dow===5);
 }
 function confirmUndo(){
@@ -287,81 +285,101 @@ async function doUndo(){
   const last=history[history.length-1];
   const newHistory=history.slice(0,-1);
   await db.ref('state/assignments/'+last.member).remove();
-  await db.ref('state/history').set(newHistory.length?newHistory:null);
-  document.getElementById('slotMemberVal').textContent='—';
-  document.getElementById('slotSeatVal').textContent='—';
-  document.getElementById('slotArrow').style.display='none';
+  if(newHistory.length>0){await db.ref('state/history').set(newHistory);}
+  else{await db.ref('state/history').remove();}
+  resetSlots();
 }
 function showResultOverlay(member,seat){
   document.getElementById('rcMember').textContent=member+' さん';
-  const rcSeatEl=document.getElementById('rcSeat');
-  if(seat===MATSUMOTO_SEAT){rcSeatEl.style.fontSize='28px';rcSeatEl.textContent=MATSUMOTO_SEAT;}
-  else{rcSeatEl.style.fontSize='56px';rcSeatEl.textContent=seat;}
+  const el=document.getElementById('rcSeat');
+  const lb=document.getElementById('rcSeatLabel');
+  if(seat===MATSUMOTO_SEAT){el.style.fontSize='28px';el.textContent=MATSUMOTO_SEAT;lb.textContent='';}
+  else{el.style.fontSize='52px';el.textContent=seat;lb.textContent='SEAT No.';}
   document.getElementById('resultOverlay').classList.add('show');
 }
 function closeOverlay(){document.getElementById('resultOverlay').classList.remove('show');}
-function rebuildResultsTable(){
+function rebuildTable(){
   const tbody=document.getElementById('resultsBody');
   tbody.innerHTML='';
   const entries=Object.entries(shared.assignments);
   if(!entries.length){document.getElementById('resultsPanel').style.display='none';return;}
-  entries.sort((a,b)=>{const sa=typeof a[1]==='number'?a[1]:Infinity;const sb=typeof b[1]==='number'?b[1]:Infinity;return sa-sb;});
-  entries.forEach(([name,seat])=>{
+  entries.sort(function(a,b){
+    const sa=typeof a[1]==='number'?a[1]:9999;
+    const sb=typeof b[1]==='number'?b[1]:9999;
+    return sa-sb;
+  });
+  entries.forEach(function(e){
+    const name=e[0],seat=e[1];
     const isMF=seat===MATSUMOTO_SEAT;
     const seatLabel=isMF?MATSUMOTO_SEAT:'No. '+seat;
     const tr=document.createElement('tr');
-    tr.innerHTML='<td class="col-seat" style="'+(isMF?'color:var(--fixed-text);font-size:11px;':'')+'">'+seatLabel+'</td><td class="col-member">'+name+'</td><td class="col-fixed">'+(isMF?'固定':'')+'</td>';
+    tr.innerHTML='<td class="col-seat" style="'+(isMF?'color:var(--fixed-text);font-size:12px;':'')+'">'+seatLabel+'</td><td class="col-member">'+name+'</td><td class="col-tag">'+(isMF?'固定':'')+'</td>';
     tbody.appendChild(tr);
   });
   document.getElementById('resultsPanel').style.display='';
 }
 function updateProgress(){
-  const lottery=(!IS_FRIDAY&&!shared.matsumotoUnlocked)?REGULAR_MEMBERS:[...REGULAR_MEMBERS,MATSUMOTO];
+  const lottery=(!IS_FRIDAY&&!shared.matsumotoUnlocked)?REGULAR_MEMBERS:ALL_MEMBERS;
   const total=lottery.length;
-  const done=lottery.filter(m=>{if(!IS_FRIDAY&&!shared.matsumotoUnlocked&&m===MATSUMOTO)return false;return m in shared.assignments;}).length;
+  const done=lottery.filter(function(m){
+    if(!IS_FRIDAY&&!shared.matsumotoUnlocked&&m===MATSUMOTO)return false;
+    return m in shared.assignments;
+  }).length;
   document.getElementById('progBar').style.width=(done/total*100)+'%';
   document.getElementById('statusBar').textContent=done+' / '+total+' 完了';
 }
 function renderGrid(){
   const g=document.getElementById('memberGrid');
   g.innerHTML='';
-  [...REGULAR_MEMBERS,MATSUMOTO].forEach(m=>{
+  ALL_MEMBERS.forEach(function(m){
     const div=document.createElement('div');
-    const fixed=isFixed(m);const done=isDone(m);const isMe=localState.currentMember===m;
+    const fixed=isFixed(m);const done=isDone(m);const isMe=local.currentMember===m;
     div.className='member-chip'+(fixed?' fixed':done?' done':isMe?' me':'');
-    if(fixed){div.innerHTML='<div class="chip-name">'+m+'</div><div class="chip-sub">'+MATSUMOTO_SEAT+'</div><button class="unlock-btn" onclick="unlockMatsumoto()">🔓 固定解除</button>';}
-    else if(done){div.innerHTML='<div class="chip-name">✓ '+m+'</div><div class="chip-sub">'+(shared.assignments[m]===MATSUMOTO_SEAT?MATSUMOTO_SEAT:'No.'+shared.assignments[m])+'</div>';}
-    else{div.innerHTML='<div class="chip-name">'+m+'</div><div class="chip-sub">'+(isMe?'選択中':'クリックして選択')+'</div>';div.addEventListener('click',()=>selectMember(m));}
+    if(fixed){
+      div.innerHTML='<div class="chip-name">'+m+'</div><div class="chip-sub">'+MATSUMOTO_SEAT+'</div><button class="unlock-btn" onclick="unlockMatsumoto()">🔓 固定解除</button>';
+    } else if(done){
+      const s=shared.assignments[m];
+      div.innerHTML='<div class="chip-name">✓ '+m+'</div><div class="chip-sub">'+(s===MATSUMOTO_SEAT?MATSUMOTO_SEAT:'No.'+s)+'</div>';
+    } else {
+      div.innerHTML='<div class="chip-name">'+m+'</div><div class="chip-sub">'+(isMe?'選択中':'クリックして選択')+'</div>';
+      div.addEventListener('click',function(){selectMember(m);});
+    }
     g.appendChild(div);
   });
 }
 function updateNotice(){
-  const notice=document.getElementById('matsumotoNotice');
-  if(IS_FRIDAY){notice.className='notice thu';notice.innerHTML='🗓️ 本日は金曜日です。松本さんも通常メンバーとしてくじに参加します。';}
-  else if(shared.matsumotoUnlocked){notice.className='notice thu';notice.innerHTML='🔓 松本さんの固定を解除しました。通常メンバーとしてくじに参加します。';}
-  else{notice.className='notice';notice.innerHTML='📌 松本さんは「松本さん席」固定です。チップの「固定解除」ボタンでくじに参加できます。';}
+  const n=document.getElementById('matsumotoNotice');
+  if(IS_FRIDAY){n.className='notice active';n.innerHTML='🗓️ 本日は金曜日です。松本さんも通常メンバーとしてくじに参加します。';}
+  else if(shared.matsumotoUnlocked){n.className='notice active';n.innerHTML='🔓 松本さんの固定を解除しました。「松本さん席」もくじの対象に加わります。';}
+  else{n.className='notice';n.innerHTML='📌 松本さんは「松本さん席」固定です。「固定解除」でくじに参加できます。';}
 }
-function toDateStr(d){return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate();}
 function scheduleAutoReset(){
   const now=new Date();const next=new Date(now);next.setHours(24,0,5,0);
-  setTimeout(async()=>{await doReset();scheduleAutoReset();},next-now);
+  setTimeout(async function(){await doReset();scheduleAutoReset();},next-now);
 }
+function resetSlots(){
+  document.getElementById('slotMemberVal').textContent='—';
+  document.getElementById('slotSeatVal').textContent='—';
+  document.getElementById('slotArrow').style.display='none';
+}
+function dateStr(){const d=new Date();return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate();}
 function launchConfetti(){
   const c=document.getElementById('confetti');
   const cols=['#e8c87a','#c9993a','#6aaa6a','#f0ece0','#c94040','#7ad4e8'];
-  for(let i=0;i<70;i++){const p=document.createElement('div');p.className='cp';p.style.cssText='left:'+Math.random()*100+'vw;background:'+cols[i%cols.length]+';animation-duration:'+(1.6+Math.random()*2)+'s;animation-delay:'+Math.random()*0.8+'s;--d:'+(Math.random()*220-110)+'px';c.appendChild(p);setTimeout(()=>p.remove(),4000);}
+  for(let i=0;i<70;i++){
+    const p=document.createElement('div');p.className='cp';
+    p.style.cssText='left:'+Math.random()*100+'vw;background:'+cols[i%cols.length]+';animation-duration:'+(1.6+Math.random()*2)+'s;animation-delay:'+Math.random()*0.8+'s;--d:'+(Math.random()*220-110)+'px';
+    c.appendChild(p);setTimeout(function(){p.remove();},4000);
+  }
 }
-function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
-(async()=>{
+function sleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
+(async function(){
   const days=['日','月','火','水','木','金','土'];
   const badge=document.getElementById('dayBadge');
   badge.textContent='本日 '+days[DOW]+'曜日';
   if(IS_FRIDAY)badge.classList.add('friday');
   updateNotice();
-const snap=await STATE.once('value');
-  const data=snap.val();
-  const today=toDateStr(new Date());
-  if(!data||data.lastResetDate!==today){await doReset();}
+  await doReset();
   scheduleAutoReset();
 })();
 </script>

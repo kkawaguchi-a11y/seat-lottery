@@ -414,7 +414,9 @@ function sleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
   if(IS_FRIDAY)badge.classList.add('friday');
   updateNotice();
   const snap=await STATE.once('value');
-  if(!snap.val()){await doReset();}
+  const data=snap.val();
+  const today=dateStr();
+  if(!data||data.lastResetDate!==today){await doReset();}
   scheduleAutoReset();
 })();
 </script>

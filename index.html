@@ -175,6 +175,13 @@ const DOW=new Date().getDay();
 const IS_FRIDAY=DOW===5;
 let local={currentMember:null,animating:false};
 let shared={assignments:{},matsumotoUnlocked:false,drawingBy:null,history:[]};
+let ready=false;
+
+// 初期化完了後のみ画面更新
+function updateUI(){
+  if(!ready)return;
+  renderGrid();updateWho();updateDrawBtn();updateUndoBtn();rebuildTable();updateProgress();updateNotice();
+}
 
 STATE.on('value',function(snap){
   const d=snap.val()||{};
@@ -189,7 +196,7 @@ STATE.on('value',function(snap){
   } else {
     lock.classList.remove('show');
   }
-  renderGrid();updateWho();updateDrawBtn();updateUndoBtn();rebuildTable();updateProgress();updateNotice();
+  updateUI();
 });
 
 db.ref('.info/connected').on('value',function(snap){
@@ -379,18 +386,17 @@ function sleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
   badge.textContent='本日 '+days[DOW]+'曜日';
   if(IS_FRIDAY)badge.classList.add('friday');
   updateNotice();
+  // Firebaseのデータを確認して初期化
   const snap=await STATE.once('value');
-  if(!snap.val()){
+  const data=snap.val();
+  if(!data||!data.assignments){
     await doReset();
   } else {
-    const d=snap.val();
-    shared.assignments=d.assignments||{};
-    shared.matsumotoUnlocked=d.matsumotoUnlocked||false;
-    shared.drawingBy=null;
-    shared.history=d.history||[];
-    await db.ref('state/drawingBy').remove();
-    renderGrid();updateWho();updateDrawBtn();updateUndoBtn();rebuildTable();updateProgress();updateNotice();
+    // drawingByだけクリア（前回の抽選が中断した場合の対策）
+    if(data.drawingBy){await db.ref('state/drawingBy').remove();}
   }
+  ready=true;
+  updateUI();
   scheduleAutoReset();
 })();
 </script>

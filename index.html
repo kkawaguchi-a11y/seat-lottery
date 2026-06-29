@@ -358,9 +358,14 @@ function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
   badge.textContent='本日 '+days[DOW]+'曜日';
   if(IS_FRIDAY)badge.classList.add('friday');
   updateNotice();
-  const snap=await STATE.once('value');
-  if(!snap.val())await doReset();
+   const snap=await STATE.once('value');
+  if(!snap.val()){
+    await doReset();
+  } else {
+    await db.ref('state/drawingBy').remove();
+  }
   scheduleAutoReset();
+
 })();
 </script>
 </body>

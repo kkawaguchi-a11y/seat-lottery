@@ -100,7 +100,7 @@
 <header>
   <div class="title-en">Seat Assignment Lottery</div>
   <h1>席次くじ引き</h1>
-  <div class="subtitle">17名 / 席次 No.1–14 + 松本さん席</div>
+  <div class="subtitle">16名 / 席次 No.1–4・6–14 + 松本さん席×2</div>
   <div class="day-badge" id="dayBadge"></div>
   <div class="sync-bar">
     <div class="sync-dot" id="syncDot"></div>
@@ -128,7 +128,7 @@
         <button class="btn btn-warning" id="undoBtn" onclick="confirmUndo()" disabled>↩ 1つ戻す</button>
         <button class="btn btn-danger" onclick="confirmReset()">↺ 全リセット</button>
       </div>
-      <div class="status-bar" id="statusBar">0 / 16 完了</div>
+      <div class="status-bar" id="statusBar">0 / 15 完了</div>
     </div>
   </div>
   <div class="panel" id="resultsPanel" style="display:none">
@@ -167,32 +167,31 @@ firebase.initializeApp(firebaseConfig);
 const db=firebase.database();
 const STATE=db.ref('state');
 
-const MEMBERS=['安松','鵜野','金原','熊谷','山口','宍戸','小森','仁平','川口','倉田','大原','中原','鎮西','本橋','木村','傳田','松本'];
+// 宍戸削除・16名
+const REGULAR_MEMBERS=['安松','鵜野','金原','熊谷','山口','小森','仁平','川口','倉田','大原','中原','鎮西','本橋','木村','傳田'];
 const MATSUMOTO='松本';
-const MATSUMOTO_SEAT='松本さん席';
-const NUMERIC_SEATS=[1,2,3,4,5,6,7,8,9,10,11,12,13,14];
+const MATSUMOTO_SEAT_1='松本さん席①';
+const MATSUMOTO_SEAT_2='松本さん席②';
+const MATSUMOTO_SEATS=[MATSUMOTO_SEAT_1,MATSUMOTO_SEAT_2];
+// 5番を除いた13席
+const NUMERIC_SEATS=[1,2,3,4,6,7,8,9,10,11,12,13,14];
+const ALL_MEMBERS=[...REGULAR_MEMBERS,MATSUMOTO];
 const DOW=new Date().getDay();
 const IS_FRIDAY=DOW===5;
 
-// ローカル状態
-let me=null; // 自分が選んだメンバー
+let me=null;
 let animating=false;
-
-// Firebase同期状態
 let assignments={};
 let matsumotoUnlocked=false;
 let drawingBy=null;
 let history=[];
 
-// Firebase監視（起動後は常にここで状態更新）
 STATE.on('value',function(snap){
   const d=snap.val()||{};
   assignments=d.assignments||{};
   matsumotoUnlocked=d.matsumotoUnlocked||false;
   drawingBy=d.drawingBy||null;
   history=d.history||[];
-
-  // 他の人が抽選中ならロック表示
   const lock=document.getElementById('drawingLock');
   if(drawingBy&&drawingBy!==me){
     lock.classList.add('show');
@@ -200,25 +199,24 @@ STATE.on('value',function(snap){
   } else {
     lock.classList.remove('show');
   }
-
   render();
 });
 
-// 接続状態監視
 db.ref('.info/connected').on('value',function(snap){
   const on=snap.val();
   document.getElementById('syncDot').className='sync-dot '+(on?'online':'offline');
   document.getElementById('syncLabel').textContent=on?'リアルタイム同期中':'オフライン';
 });
 
-// 利用可能な席を返す
 function getAvailableSeats(){
-  const used=new Set(Object.values(assignments).filter(function(s){return typeof s==='number';}));
-  const seats=NUMERIC_SEATS.filter(function(s){return!used.has(s);});
-  // 松本さん席：金曜 or 固定解除済み、かつまだ誰も割り当てなし
-  const matsumotoTaken=Object.values(assignments).indexOf(MATSUMOTO_SEAT)>=0;
-  if((IS_FRIDAY||matsumotoUnlocked)&&!matsumotoTaken){
-    seats.push(MATSUMOTO_SEAT);
+  const usedNums=new Set(Object.values(assignments).filter(function(s){return typeof s==='number';}));
+  const seats=NUMERIC_SEATS.filter(function(s){return!usedNums.has(s);});
+  // 松本さん席①②：金曜 or 固定解除済みの場合、未使用のものを追加
+  if(IS_FRIDAY||matsumotoUnlocked){
+    const usedSpecial=new Set(Object.values(assignments).filter(function(s){return MATSUMOTO_SEATS.includes(s);}));
+    MATSUMOTO_SEATS.forEach(function(s){
+      if(!usedSpecial.has(s))seats.push(s);
+    });
   }
   return seats;
 }
@@ -226,28 +224,20 @@ function getAvailableSeats(){
 function isFixed(m){return m===MATSUMOTO&&!IS_FRIDAY&&!matsumotoUnlocked;}
 function isDone(m){return!isFixed(m)&&(m in assignments);}
 
-// メンバー選択
 function selectMember(m){
   if(isFixed(m)||isDone(m)||animating||drawingBy)return;
   me=me===m?null:m;
   render();
 }
 
-// くじを引く
 async function draw(){
   if(!me||animating)return;
   const avail=getAvailableSeats();
   if(!avail.length)return;
-
-  // drawingByをセット（他の人にロックを知らせる）
   await db.ref('state/drawingBy').set(me);
   animating=true;
   render();
-
-  // 当選席を決定
   const finalSeat=avail[Math.floor(Math.random()*avail.length)];
-
-  // スロット演出
   const slotM=document.getElementById('slotMember');
   const slotS=document.getElementById('slotSeat');
   const valM=document.getElementById('slotMemberVal');
@@ -258,60 +248,49 @@ async function draw(){
   for(let i=0;i<20;i++){
     slotS.classList.add('spinning');
     const r=avail[Math.floor(Math.random()*avail.length)];
-    valS.textContent=typeof r==='number'?r:'松本席';
+    valS.textContent=typeof r==='number'?r:r;
     await sleep(55+i*4);
     slotS.classList.remove('spinning');
   }
-  valS.textContent=typeof finalSeat==='number'?finalSeat:'松本席';
+  valS.textContent=typeof finalSeat==='number'?finalSeat:finalSeat;
   slotM.classList.remove('active');slotS.classList.remove('active');
-
-  // Firebaseに保存（drawingByも同時にクリア）
   const newHistory=[...history,{member:me,seat:finalSeat}];
-  await STATE.update({
-    ['assignments/'+me]:finalSeat,
-    drawingBy:null,
-    history:newHistory
-  });
-
+  await STATE.update({['assignments/'+me]:finalSeat,drawingBy:null,history:newHistory});
   animating=false;
   const winner=me;
   me=null;
   showOverlay(winner,finalSeat);
-
-  // 全員完了でコンフェッティ
-  const targets=IS_FRIDAY||matsumotoUnlocked?MEMBERS:MEMBERS.filter(function(m){return m!==MATSUMOTO;});
+  const targets=IS_FRIDAY||matsumotoUnlocked?ALL_MEMBERS:REGULAR_MEMBERS;
   if(targets.every(function(m){return m in assignments;}))setTimeout(launchConfetti,600);
 }
 
-// 松本さん固定解除
 async function unlockMatsumoto(){
   await STATE.update({matsumotoUnlocked:true,['assignments/'+MATSUMOTO]:null});
 }
 
-// 全リセット確認
 function confirmReset(){
   if(!confirm('全ての結果をリセットしますか？\n全員の画面がリセットされます。'))return;
   doReset();
 }
 
-// 全リセット実行
 async function doReset(){
   const dow=new Date().getDay();
   const ns={assignments:{},matsumotoUnlocked:false,drawingBy:null,history:[],lastReset:dateStr()};
-  if(dow!==5)ns.assignments[MATSUMOTO]=MATSUMOTO_SEAT;
+  // 金曜以外は松本さん席①②を松本さんに固定
+  if(dow!==5){
+    ns.assignments[MATSUMOTO]=MATSUMOTO_SEAT_1;
+  }
   await STATE.set(ns);
   me=null;animating=false;
   resetSlots();
   updateDayBadge(dow);
 }
 
-// 1つ戻す確認
 function confirmUndo(){
   if(!confirm('直前の抽選結果を1つ取り消しますか？'))return;
   doUndo();
 }
 
-// 1つ戻す実行
 async function doUndo(){
   if(!history.length)return;
   const last=history[history.length-1];
@@ -325,13 +304,12 @@ async function doUndo(){
   resetSlots();
 }
 
-// 結果オーバーレイ表示
 function showOverlay(member,seat){
   document.getElementById('rcMember').textContent=member+' さん';
   const el=document.getElementById('rcSeat');
   const lb=document.getElementById('rcSeatLabel');
-  if(seat===MATSUMOTO_SEAT){
-    el.style.fontSize='28px';el.textContent=MATSUMOTO_SEAT;lb.textContent='';
+  if(MATSUMOTO_SEATS.includes(seat)){
+    el.style.fontSize='24px';el.textContent=seat;lb.textContent='';
   } else {
     el.style.fontSize='52px';el.textContent=seat;lb.textContent='SEAT No.';
   }
@@ -339,7 +317,6 @@ function showOverlay(member,seat){
 }
 function closeOverlay(){document.getElementById('resultOverlay').classList.remove('show');}
 
-// 画面全体を再描画
 function render(){
   renderGrid();
   renderWho();
@@ -353,17 +330,20 @@ function render(){
 function renderGrid(){
   const g=document.getElementById('memberGrid');
   g.innerHTML='';
-  MEMBERS.forEach(function(m){
+  ALL_MEMBERS.forEach(function(m){
     const div=document.createElement('div');
     const fixed=isFixed(m);
     const done=isDone(m);
     const isMe=me===m;
     div.className='member-chip'+(fixed?' fixed':done?' done':isMe?' me':'');
     if(fixed){
-      div.innerHTML='<div class="chip-name">'+m+'</div><div class="chip-sub">'+MATSUMOTO_SEAT+'</div><button class="unlock-btn" onclick="unlockMatsumoto()">🔓 固定解除</button>';
+      div.innerHTML='<div class="chip-name">'+m+'</div>'
+        +'<div class="chip-sub">'+MATSUMOTO_SEAT_1+'・'+MATSUMOTO_SEAT_2+'</div>'
+        +'<button class="unlock-btn" onclick="unlockMatsumoto()">🔓 固定解除</button>';
     } else if(done){
       const s=assignments[m];
-      div.innerHTML='<div class="chip-name">✓ '+m+'</div><div class="chip-sub">'+(s===MATSUMOTO_SEAT?MATSUMOTO_SEAT:'No.'+s)+'</div>';
+      const label=MATSUMOTO_SEATS.includes(s)?s:'No.'+s;
+      div.innerHTML='<div class="chip-name">✓ '+m+'</div><div class="chip-sub">'+label+'</div>';
     } else {
       div.innerHTML='<div class="chip-name">'+m+'</div><div class="chip-sub">'+(isMe?'選択中':'クリックして選択')+'</div>';
       div.addEventListener('click',function(){selectMember(m);});
@@ -397,16 +377,16 @@ function renderTable(){
   });
   entries.forEach(function(e){
     const name=e[0],seat=e[1];
-    const isMF=seat===MATSUMOTO_SEAT;
+    const isMF=MATSUMOTO_SEATS.includes(seat);
     const tr=document.createElement('tr');
-    tr.innerHTML='<td class="col-seat" style="'+(isMF?'color:var(--fixed-text);font-size:12px;':'')+'">'+( isMF?MATSUMOTO_SEAT:'No. '+seat)+'</td><td class="col-member">'+name+'</td><td class="col-tag">'+(isMF?'固定':'')+'</td>';
+    tr.innerHTML='<td class="col-seat" style="'+(isMF?'color:var(--fixed-text);font-size:11px;':'')+'">'+( isMF?seat:'No. '+seat)+'</td><td class="col-member">'+name+'</td><td class="col-tag">'+(isMF?'固定':'')+'</td>';
     tbody.appendChild(tr);
   });
   document.getElementById('resultsPanel').style.display='';
 }
 
 function renderProgress(){
-  const targets=IS_FRIDAY||matsumotoUnlocked?MEMBERS:MEMBERS.filter(function(m){return m!==MATSUMOTO;});
+  const targets=IS_FRIDAY||matsumotoUnlocked?ALL_MEMBERS:REGULAR_MEMBERS;
   const total=targets.length;
   const done=targets.filter(function(m){
     if(m===MATSUMOTO&&!IS_FRIDAY&&!matsumotoUnlocked)return false;
@@ -423,10 +403,10 @@ function renderNotice(){
     n.innerHTML='🗓️ 本日は金曜日です。松本さんも通常メンバーとしてくじに参加します。';
   } else if(matsumotoUnlocked){
     n.className='notice active';
-    n.innerHTML='🔓 松本さんの固定を解除しました。「松本さん席」もくじの対象に加わります。';
+    n.innerHTML='🔓 松本さんの固定を解除しました。「松本さん席①②」もくじの対象に加わります。';
   } else {
     n.className='notice';
-    n.innerHTML='📌 松本さんは「松本さん席」固定です。「固定解除」でくじに参加できます。';
+    n.innerHTML='📌 松本さんは「松本さん席①・②」固定です。「固定解除」でくじに参加できます。';
   }
 }
 
@@ -467,20 +447,14 @@ function launchConfetti(){
 
 function sleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
 
-// 起動処理
 (async function(){
   updateDayBadge(DOW);
   renderNotice();
-
-  // drawingByを必ずクリア（前回の抽選が中断していた場合の対策）
   await db.ref('state/drawingBy').remove();
-
-  // Firebaseにデータがなければ初期化
   const snap=await STATE.once('value');
   if(!snap.val()||!snap.val().assignments){
     await doReset();
   }
-
   scheduleAutoReset();
 })();
 </script>
